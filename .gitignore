@@ -1,0 +1,6 @@
+exps/
+outputs/
+data/
+__pycache__/
+*.pkl
+*.pyc
