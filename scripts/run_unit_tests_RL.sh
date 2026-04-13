@@ -12,7 +12,7 @@ test_path=data/APPS/APPS/test/
 
 example_tests=0 # 0: run hidden unit tests; 1: run example unit tests 
 start=0
-end=1
+end=500
 threads=10
 
 if [ ! -d $output_path ] 
