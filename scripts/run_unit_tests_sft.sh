@@ -9,7 +9,7 @@ code_path=outputs/codes_sft
 output_path=outputs/results_sft/
 test_path=data/APPS/APPS/test/ 
 
-example_tests=1 # 0: run hidden unit tests; 1: run example unit tests 
+example_tests=0 # 0: run hidden unit tests; 1: run example unit tests 
 start=0
 end=500
 threads=10
