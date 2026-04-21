@@ -9,3 +9,5 @@ python generate.py \
     --num_seqs 10 \
     --num_seqs_per_iter 10 \
     --temperature 0.6
+
+    

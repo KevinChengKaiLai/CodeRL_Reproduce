@@ -25,13 +25,18 @@ def eval_and_save_problems(args):
     test_indices = [] 
     for problem_idx, problem in enumerate(problems): 
         problem_id = int(problem.split('/')[-1])
+        # outputs/codes_rl/1.json
         code_file_path = args.code_path + '/{}.json'.format(problem_id)
         if os.path.exists(code_file_path):
+            # get valid problem
             test_indices.append(problem_idx)
     
+    # extract problem idx
     real_index = test_indices[args.index] 
+    # extract problem
     problem = problems[real_index]
     
+    # defensive create folder
     if not os.path.exists(args.output_path):
         os.makedirs(args.output_path)
     
@@ -42,6 +47,7 @@ def eval_and_save_problems(args):
     
     codes_loc = args.code_path + '/{}.json'.format(real_index)
     if not os.path.isfile(codes_loc):
+        print(f'can\'t find code file for sample {real_index} so skip')
         exit() 
     with open(codes_loc, "r") as file: 
         gen_codes = json.load(file)[str(real_index)]['code']
