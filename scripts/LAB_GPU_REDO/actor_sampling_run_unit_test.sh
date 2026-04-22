@@ -6,13 +6,14 @@
 ## For full license text, see the LICENSE file in the repo root or https://opensource.org/licenses/BSD-3-Clause
 ## '''##
 code_path=outputs/codes/
-output_path=outputs/test_results/
-test_path=/export/home/apps/data/APPS/test/ 
+# save the unit test result for actor sampling
+output_path=outputs/test_results_SFT_actor_sampling/
+test_path=data/APPS/train/ 
 
 example_tests=0 # 0: run hidden unit tests; 1: run example unit tests 
 start=0
 end=5000
-threads=10
+threads=32
 
 if [ ! -d $output_path ] 
 then
@@ -25,6 +26,7 @@ for (( i=$start;i<$end;i++ )) ; do
     echo 'testing sample index #' ${i}
     ((index++))   
     (
+    ulimit -v 8000000
     python test_one_solution.py \
         --code_path ${code_path} \
         --output_path ${output_path} \
@@ -36,3 +38,4 @@ for (( i=$start;i<$end;i++ )) ; do
 done 
 
 wait 
+echo "finish the unit test for SFT actor sampling"
