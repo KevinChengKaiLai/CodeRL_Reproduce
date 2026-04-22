@@ -13,7 +13,7 @@ test_path=data/APPS/train/
 example_tests=0 # 0: run hidden unit tests; 1: run example unit tests 
 start=0
 end=5000
-threads=32
+threads=10
 
 if [ ! -d $output_path ] 
 then
@@ -26,7 +26,7 @@ for (( i=$start;i<$end;i++ )) ; do
     echo 'testing sample index #' ${i}
     ((index++))   
     (
-    ulimit -v 8000000
+    ulimit -v 16000000
     python test_one_solution.py \
         --code_path ${code_path} \
         --output_path ${output_path} \
