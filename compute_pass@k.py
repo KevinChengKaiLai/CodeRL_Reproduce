@@ -62,10 +62,6 @@ Model   | pass@1  | pass@5
 --------|---------|--------
 SFT     | {sft_p1:6.2f}% | {sft_p5:6.2f}%
 RL      | {rl_p1:6.2f}% | {rl_p5:6.2f}%
-
-Paper targets (CodeRL+CodeT5, Introductory):
-  pass@1 = 7.08%
-  pass@5 = 16.37%
 """
 
 print(output)
