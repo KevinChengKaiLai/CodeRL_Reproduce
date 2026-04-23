@@ -4,6 +4,7 @@ python train.py \
     --model codet5-base \
     --tuning_mode critic \
     --train-path data/APPS/train/ \
+    --model_path models/codet5-base \
     --epochs 10  \
     --lr 5e-5 \
     --batch-size-per-replica 32 \
