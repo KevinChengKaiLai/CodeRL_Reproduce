@@ -55,7 +55,7 @@ for code_file in tqdm(code_files):
                 result = False
         else:
             result = -2  # fallback
-        gen_solutions.append({'code': code, 'result': result})
+        gen_solutions.append({'code': code, 'result': result, 'error_type': None})
 
     # Write to problem folder
     out_path = os.path.join(train_dir, str(problem_id).zfill(4), "gen_solutions.json")
