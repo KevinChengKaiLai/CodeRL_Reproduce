@@ -41,7 +41,7 @@ class APPSBaseDataset(torch.utils.data.Dataset):
         self.all_error_types, self.all_error_subtypes, self.all_baseline_error_types = [], [], []
         self.initialize()
 
-        if self.model in ['codet5-base', 'codet5-large']:
+        if self.model in ['codet5-base', 'codet5-large', 'codet5-small']:
             self.tokenizer = transformers.RobertaTokenizer.from_pretrained('models/codet5-base-tokenizer')
        
     def load_gen_samples(self, sols, answer_type, starter_code, question_str):
@@ -279,7 +279,7 @@ class APPSBaseDataset(torch.utils.data.Dataset):
                 curr_samples.append((curr_q, curr_s, curr_a, curr_q_prefix))
                 
                 # only pack 1 sample each sequence for codeT5 
-                if self.model in ['codet5-base', 'codet5-large']:
+                if self.model in ['codet5-base', 'codet5-large', 'codet5-small']:
                     break 
 
             if self.sample_mode == 'uniform_sol':
@@ -311,7 +311,7 @@ class APPSBaseDataset(torch.utils.data.Dataset):
             input_ids.extend(question_token_ids)
              
             answer_token_ids = self.tokenizer.encode(a_str, verbose=False)
-            if self.model not in ['codet5-base', 'codet5-large']:
+            if self.model not in ['codet5-base', 'codet5-large', 'codet5-small']:
                 label_ids.extend([-100] * len(question_token_ids))
                 answer_token_ids.append(self.tokenizer.eos_token_id)
                 input_ids.extend(answer_token_ids)
@@ -321,23 +321,23 @@ class APPSBaseDataset(torch.utils.data.Dataset):
                 error_types.append(dsutils.get_error_type(result))
                 
         # Sanity checks and padding 
-        input_ids_max_len = self.max_src_tokens if self.model in ['codet5-base', 'codet5-large'] else self.max_tokens 
+        input_ids_max_len = self.max_src_tokens if self.model in ['codet5-base', 'codet5-large', 'codet5-small'] else self.max_tokens 
         if len(input_ids) < input_ids_max_len: 
             new_input_ids = [self.tokenizer.eos_token_id] * input_ids_max_len
             new_input_ids[:len(input_ids)] = input_ids
             input_ids = new_input_ids 
             
-            if self.model not in ['codet5-base', 'codet5-large']:
+            if self.model not in ['codet5-base', 'codet5-large', 'codet5-small']:
                 new_label_ids = [-100] * input_ids_max_len 
                 new_label_ids[:len(label_ids)] = label_ids
                 label_ids = new_label_ids
                 
-        if self.model in ['codet5-base', 'codet5-large'] and len(label_ids) < self.max_tokens:
+        if self.model in ['codet5-base', 'codet5-large', 'codet5-small'] and len(label_ids) < self.max_tokens:
             new_label_ids = [-100] * self.max_tokens 
             new_label_ids[:len(label_ids)] = label_ids
             label_ids = new_label_ids
         
-        if self.model not in ['codet5-base', 'codet5-large'] and len(input_ids) != len(label_ids): pdb.set_trace()
+        if self.model not in ['codet5-base', 'codet5-large', 'codet5-small'] and len(input_ids) != len(label_ids): pdb.set_trace()
             
         if self.tuning_mode in ['critic'] and sample_type == 'gen': 
             assert len(error_types) == 1 

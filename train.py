@@ -29,7 +29,7 @@ torch.multiprocessing.set_sharing_strategy('file_system')
 
 
 def run_training(args, train_data):
-    if args.model in ['codet5-base', 'codet5-large']:
+    if args.model in ['codet5-base', 'codet5-large', 'codet5-small']:
         model_path = args.model_path if args.model_path is not None else 'Salesforce/{}'.format(args.model)        
         print("Loading model from {}...".format(model_path))
         model = transformers.T5ForConditionalGeneration.from_pretrained(
@@ -111,7 +111,7 @@ def get_dataset(args):
     if args.db:
         fnames = fnames[:50]
 
-    if args.model in ['codet5-base', 'codet5-large']:
+    if args.model in ['codet5-base', 'codet5-large', 'codet5-small']:
         max_tokens = 512 
         max_src_tokens = 600
     else:
