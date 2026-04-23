@@ -42,7 +42,7 @@ class APPSBaseDataset(torch.utils.data.Dataset):
         self.initialize()
 
         if self.model in ['codet5-base', 'codet5-large']:
-            self.tokenizer = transformers.RobertaTokenizer.from_pretrained('Salesforce/codet5-base')
+            self.tokenizer = transformers.RobertaTokenizer.from_pretrained('models/codet5-base-tokenizer')
        
     def load_gen_samples(self, sols, answer_type, starter_code, question_str):
         samples = []
