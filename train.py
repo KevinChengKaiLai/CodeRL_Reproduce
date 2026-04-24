@@ -16,6 +16,7 @@ import json
 import pdb 
 from tqdm import tqdm
 from datetime import datetime
+import wandb
 
 import transformers
 import torch
@@ -80,6 +81,8 @@ def run_training(args, train_data):
 
         deepspeed=args.deepspeed,
         fp16=args.fp16,
+        report_to="wandb",
+        run_name=os.path.basename(args.save_dir),
         
     )
     
