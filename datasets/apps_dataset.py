@@ -372,7 +372,9 @@ class APPSBaseDataset(torch.utils.data.Dataset):
             rewards *= dsutils.get_reward_from_error_type(gt_error)
         
         # masking rewards 
-        reward_mask = (error_logit == -np.float('Inf'))[:,0]
+        # reward_mask = (error_logit == -np.float('Inf'))[:,0]
+        reward_mask = (error_logit == -float('inf'))[:,0]
+
         rewards[reward_mask] = 0.0
         rl_label_ids = np.array(labels)
         rl_label_ids[reward_mask] = -100 

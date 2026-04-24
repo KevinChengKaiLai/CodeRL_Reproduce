@@ -2,7 +2,7 @@
 
 
 # Add CUDA_VISIBLE_DEVICES=0 because the dataparallel has some issue on this GPU
-CUDA_VISIBLE_DEVICES=0 python3 train.py \
+CUDA_VISIBLE_DEVICES=0 python train.py \
   --model codet5-small \
   --model_path models/codet5-small \
   --tuning_mode critic \

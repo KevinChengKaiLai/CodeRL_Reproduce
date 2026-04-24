@@ -38,4 +38,4 @@ for (( i=$start;i<$end;i++ )) ; do
 done 
 
 wait 
-echo "finish the unit test for SFT actor sampling"
+echo "finish the unit tests"
