@@ -146,6 +146,11 @@ def main(args):
         starter_path = os.path.join(prob_path, "starter_code.py")
         if args.critic_scores and not args.gt_solutions: 
             solutions_path = os.path.join(prob_path, "gen_solutions.json")
+
+            ### Skip problems missing gen_solutions.json, likely 182 over 5000
+            if not os.path.exists(solutions_path):
+                print(f"Skipping {problem_id}: missing gen_solutions.json")
+                continue
         else:
             solutions_path = os.path.join(prob_path, "solutions.json")
         if not os.path.exists(starter_path):
