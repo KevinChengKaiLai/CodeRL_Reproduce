@@ -5,8 +5,8 @@ import os
 import json
 from collections import Counter
 
-codes_dir = "outputs/codes/"
-results_dir = "outputs/test_results_SFT_actor_sampling/"
+codes_dir = "outputs/sampled_code/codes/"
+results_dir = "outputs/unit_test_score/test_results_SFT_actor_sampling/"
 
 # Find all generated code files
 code_files = glob.glob(codes_dir + "*.json")

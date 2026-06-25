@@ -4,3 +4,8 @@ data/
 __pycache__/
 *.pkl
 *.pyc
+.claude/
+logs/
+models/
+wandb/
+grad_norm_log.csv

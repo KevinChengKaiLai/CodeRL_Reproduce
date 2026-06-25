@@ -24,15 +24,20 @@ import transformers
 import datasets.utils as dsutils
 
 class APPSBaseDataset(torch.utils.data.Dataset):
-    def __init__(self, dataroot, problem_dirs, model, max_tokens, sample_mode, 
-                 tuning_mode, max_src_tokens, relative_returns):
+    def __init__(self, dataroot, problem_dirs, model, max_tokens, sample_mode,
+                 tuning_mode, max_src_tokens, relative_returns, data_suffix='', positive_only=False, negative_only=False, baseline_suffix=None):
         self.dataroot = dataroot
-        self.problem_dirs = problem_dirs 
+        self.problem_dirs = problem_dirs
 
         self.model = model
         self.sample_mode = sample_mode
         self.tuning_mode = tuning_mode
         self.relative_returns = relative_returns
+        self.data_suffix = data_suffix
+        self.positive_only = positive_only
+        self.negative_only = negative_only
+        # baseline_suffix overrides data_suffix for baseline_solutions.json only
+        self.baseline_suffix = baseline_suffix if baseline_suffix is not None else data_suffix
         
         self.max_tokens = max_tokens
         self.max_src_tokens = max_src_tokens
@@ -114,10 +119,10 @@ class APPSBaseDataset(torch.utils.data.Dataset):
                 gen_sols_fname = [os.path.join(self.dataroot, problem_name, "gen_solutions.json")]       
 
             elif self.tuning_mode in ['rl']:
-                gen_sols_fname = [os.path.join(self.dataroot, problem_name, "gen_solutions_critic_scores.pkl")]   
-                
-                if self.relative_returns: 
-                    baseline_fname = os.path.join(self.dataroot, problem_name, "baseline_solutions.json")
+                gen_sols_fname = [os.path.join(self.dataroot, problem_name, f"gen_solutions_critic_scores{self.data_suffix}.pkl")]
+
+                if self.relative_returns:
+                    baseline_fname = os.path.join(self.dataroot, problem_name, f"baseline_solutions{self.baseline_suffix}.json")
                 
             question_fname = os.path.join(self.dataroot, problem_name, "question.txt")
             sols_fname = os.path.join(self.dataroot, problem_name, "solutions.json")            
@@ -157,13 +162,16 @@ class APPSBaseDataset(torch.utils.data.Dataset):
                 info = [self.get_gt_info() for s in gt_samples]
                 samples_info += info
                 
-            elif self.tuning_mode in ['rl']: 
-                
+            elif self.tuning_mode in ['rl']:
+
                 if self.relative_returns:
+                    if not os.path.isfile(baseline_fname):
+                        skipped_problems.append(problem_name)
+                        continue
                     baseline_sample = json.load(open(baseline_fname, 'r'))
                     baseline_error_type = self.get_baseline_error_type(baseline_sample)
                 else:
-                    baseline_error_type = -1 
+                    baseline_error_type = -1
 
                 for fname in gen_sols_fname: 
                     if os.path.exists(fname):
@@ -367,6 +375,10 @@ class APPSBaseDataset(torch.utils.data.Dataset):
             curr_reward = dsutils.get_reward_from_error_type(gt_error)
             baseline_reward = dsutils.get_reward_from_error_type(baseline_error) if baseline_error!=-1 else 0 
             relative_reward = curr_reward - baseline_reward
+            if self.positive_only and relative_reward <= 0:
+                relative_reward = 0.0
+            if self.negative_only and relative_reward >= 0:
+                relative_reward = 0.0
             rewards *= relative_reward
         else:
             rewards *= dsutils.get_reward_from_error_type(gt_error)

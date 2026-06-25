@@ -1,35 +1,39 @@
 
 #!/usr/bin/env python3
 """
-eval_results.py — Evaluate CodeRL unit-test pkl outputs.
+eval_performance.py — Evaluate CodeRL unit-test pkl outputs.
 
 Usage:
-    python eval_results.py <unit_test_pkl_path>
+    python eval_performance.py <unit_test_pkl_path> [codes_dir] [--k 1 5 10 20]
+
+    codes_dir (optional): path to the generated codes JSON directory.
+                          When provided, adds code length and uniqueness metrics.
+    --k (optional): space-separated list of k values for pass@k.
+                    Defaults to all of {1, 5, 10, n} where n is the detected
+                    number of samples per problem (duplicates removed, sorted).
 
 Output:
     Prints a summary table and saves it to <unit_test_pkl_path>/eval_summary.txt
 """
 
 import sys
+import argparse
 import pickle as pkl
 import glob
 import os
+import json
 import numpy as np
 from math import comb
 from datetime import datetime
+from collections import defaultdict
 
 
 # ─── helpers ──────────────────────────────────────────────────────────────────
 
 def solution_passed(result_list):
-    """A solution passes only if every test case returned True."""
-    return all(r is True or r is True for r in result_list)
+    return all(r is True for r in result_list)
 
 def classify_solution(result_list):
-    """
-    Classify a single solution's result list into one of four categories.
-    Priority: CompileError > RuntimeError > FailedTest > PassedTest
-    """
     if any(r == -2 for r in result_list):
         return "CompileError"
     if any(r == -1 for r in result_list):
@@ -44,10 +48,22 @@ def pass_at_k(n, c, k):
         return 1.0
     return 1.0 - comb(n - c, k) / comb(n, k)
 
+def partial_pass_rate(result_list):
+    """Fraction of individual test cases that returned True."""
+    if not result_list:
+        return 0.0
+    return sum(1 for r in result_list if r is True) / len(result_list)
+
+def uniqueness_rate(codes):
+    """Fraction of codes that are unique within the list."""
+    if not codes:
+        return 0.0
+    return len(set(codes)) / len(codes)
+
 
 # ─── main ─────────────────────────────────────────────────────────────────────
 
-def compute_metrics(results_dir):
+def compute_metrics(results_dir, codes_dir=None, k_values=None):
     pkl_files = sorted(glob.glob(os.path.join(results_dir, "*.pkl")))
     if not pkl_files:
         print(f"No .pkl files found in: {results_dir}")
@@ -55,31 +71,50 @@ def compute_metrics(results_dir):
 
     n_problems = len(pkl_files)
 
-    # per-problem accumulators
-    pass1_list, pass5_list = [], []
+    # Detect n (samples per problem) from first non-empty pkl
+    detected_n = None
+    for fpath in pkl_files:
+        with open(fpath, "rb") as f:
+            data = pkl.load(f)
+        idx = list(data.keys())[0]
+        n = len(data[idx]["results"])
+        if n > 0:
+            detected_n = n
+            break
 
-    # solution-level outcome counts (across all problems × all samples)
+    if k_values is None:
+        # Auto: 1, 5, 10, and detected_n (deduped, sorted, clamped to detected_n)
+        defaults = {1, 5, 10}
+        if detected_n is not None:
+            defaults.add(detected_n)
+        k_values = sorted(k for k in defaults if detected_n is None or k <= detected_n)
+    else:
+        if detected_n is not None:
+            k_values = sorted(k for k in k_values if k <= detected_n)
+
+    # per-k accumulators: k -> list of per-problem pass@k values
+    pass_at_k_lists = defaultdict(list)
+
     total_solutions = 0
     outcome_counts = {"CompileError": 0, "RuntimeError": 0, "FailedTest": 0, "PassedTest": 0}
-
-    # problem-level outcome counts (dominant outcome per problem)
     problem_outcome_counts = {"CompileError": 0, "RuntimeError": 0, "FailedTest": 0, "PassedTest": 0}
-
-    # raw signal counts (individual test-case verdicts)
     raw_counts = {"True": 0, "False": 0, "-1": 0, "-2": 0}
 
-    # partial-pass tracking: problems where ≥1 but <all solutions pass
-    n_any_pass = 0    # ≥1 solution passed
-    n_all_pass = 0    # all solutions passed
-    n_none_pass = 0   # zero solutions passed
+    n_any_pass = 0
+    n_all_pass = 0
+    n_none_pass = 0
 
+    partial_rates = []
     skipped = 0
+
+    code_lengths = []
+    uniqueness_rates = []
 
     for fpath in pkl_files:
         with open(fpath, "rb") as f:
             data = pkl.load(f)
         idx = list(data.keys())[0]
-        results = data[idx]["results"]   # list[list]
+        results = data[idx]["results"]
 
         n = len(results)
         if n == 0:
@@ -87,11 +122,9 @@ def compute_metrics(results_dir):
             continue
 
         total_solutions += n
-        c = 0  # number of passing solutions for this problem
-        sol_outcomes = []
+        c = 0
 
         for result_list in results:
-            # raw verdicts
             for r in result_list:
                 if r is True:
                     raw_counts["True"] += 1
@@ -102,20 +135,18 @@ def compute_metrics(results_dir):
                 elif r == -2:
                     raw_counts["-2"] += 1
 
-            # solution-level outcome
             outcome = classify_solution(result_list)
             outcome_counts[outcome] += 1
-            sol_outcomes.append(outcome)
 
             if solution_passed(result_list):
                 c += 1
+            else:
+                partial_rates.append(partial_pass_rate(result_list))
 
-        # pass@k
-        pass1_list.append(pass_at_k(n, c, 1))
-        if n >= 5:
-            pass5_list.append(pass_at_k(n, c, 5))
+        for k in k_values:
+            if n >= k:
+                pass_at_k_lists[k].append(pass_at_k(n, c, k))
 
-        # partial-pass breakdown
         if c == 0:
             n_none_pass += 1
         elif c == n:
@@ -123,13 +154,21 @@ def compute_metrics(results_dir):
         else:
             n_any_pass += 1
 
-        # dominant problem-level outcome (worst outcome wins, same priority order)
         dominant = classify_solution([v for rl in results for v in rl])
         problem_outcome_counts[dominant] += 1
 
+        if codes_dir is not None:
+            code_file = os.path.join(codes_dir, f"{idx}.json")
+            if os.path.exists(code_file):
+                with open(code_file) as cf:
+                    cdata = json.load(cf)
+                codes = cdata.get(str(idx), cdata.get(idx, {})).get("code", [])
+                if codes:
+                    code_lengths.extend(len(c) for c in codes)
+                    uniqueness_rates.append(uniqueness_rate(codes))
+
     evaluated = n_problems - skipped
-    pass1  = np.mean(pass1_list)  * 100 if pass1_list  else 0.0
-    pass5  = np.mean(pass5_list)  * 100 if pass5_list  else 0.0
+    avg_partial = np.mean(partial_rates) * 100 if partial_rates else 0.0
 
     # ── format report ──────────────────────────────────────────────────────────
     lines = []
@@ -141,9 +180,17 @@ def compute_metrics(results_dir):
 
     lines.append("\n── Pass@k ──────────────────────────────────────────────────")
     lines.append(f"  Problems evaluated : {evaluated}  (skipped: {skipped})")
-    lines.append(f"  Samples per problem: {total_solutions // evaluated if evaluated else 0}  (n={total_solutions} total)")
-    lines.append(f"  pass@1             : {pass1:.2f}%")
-    lines.append(f"  pass@5             : {pass5:.2f}%")
+    n_per_prob = total_solutions // evaluated if evaluated else 0
+    lines.append(f"  Samples per problem: {n_per_prob}  (n={total_solutions} total)")
+    for k in k_values:
+        vals = pass_at_k_lists[k]
+        pct = np.mean(vals) * 100 if vals else 0.0
+        n_eligible = len(vals)
+        lines.append(f"  pass@{k:<3}            : {pct:.2f}%  ({n_eligible} problems with n>={k})")
+
+    lines.append("\n── Partial Test Pass Rate ───────────────────────────────────")
+    lines.append(f"  Avg test cases passed (failing solutions): {avg_partial:.2f}%")
+    lines.append(f"  (How close failing solutions are to passing)")
 
     lines.append("\n── Solution-level Outcomes (% of all solutions) ────────────")
     for label in ["PassedTest", "FailedTest", "RuntimeError", "CompileError"]:
@@ -168,21 +215,55 @@ def compute_metrics(results_dir):
     lines.append(f"  Problems with ALL solutions passing : {n_all_pass:>5}  ({n_all_pass/evaluated*100:5.1f}%)")
     lines.append(f"  Problems with SOME solutions passing: {n_any_pass:>5}  ({n_any_pass/evaluated*100:5.1f}%)")
     lines.append(f"  Problems with NO  solution passing  : {n_none_pass:>5}  ({n_none_pass/evaluated*100:5.1f}%)")
+
+    if code_lengths:
+        lines.append("\n── Generated Code Length (chars) ───────────────────────────")
+        lines.append(f"  Mean   : {np.mean(code_lengths):>8.1f}")
+        lines.append(f"  Median : {np.median(code_lengths):>8.1f}")
+        lines.append(f"  Std    : {np.std(code_lengths):>8.1f}")
+        lines.append(f"  Min    : {np.min(code_lengths):>8}    Max: {np.max(code_lengths)}")
+
+        lines.append("\n── Sample Uniqueness (diversity) ───────────────────────────")
+        lines.append(f"  Mean uniqueness rate : {np.mean(uniqueness_rates)*100:.1f}%")
+        lines.append(f"  (% of distinct solutions per problem, avg across problems)")
+        lines.append(f"  Problems with all-identical samples: {sum(1 for r in uniqueness_rates if r < 1/len(uniqueness_rates)+1e-9):>5}")
+
     lines.append("=" * 60)
 
     report = "\n".join(lines)
     print(report)
 
-    # ── save ───────────────────────────────────────────────────────────────────
     out_path = os.path.join(results_dir, "eval_summary.txt")
     with open(out_path, "w") as f:
         f.write(report + "\n")
     print(f"\nSaved to {out_path}")
 
+    import json as _json
+    json_out = {
+        "pass_at_k": {str(k): round(float(np.mean(pass_at_k_lists[k])) * 100, 4)
+                      for k in k_values if pass_at_k_lists[k]},
+        "outcome_pcts": {
+            label: round(outcome_counts[label] / total_solutions * 100, 2)
+            for label in ["PassedTest", "FailedTest", "RuntimeError", "CompileError"]
+        } if total_solutions else {},
+        "uniqueness_mean_pct": round(float(np.mean(uniqueness_rates)) * 100, 2) if uniqueness_rates else None,
+        "n_problems_evaluated": evaluated,
+        "n_samples_per_problem": n_per_prob,
+        "results_dir": os.path.abspath(results_dir),
+        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+    }
+    json_path = os.path.join(results_dir, "eval_summary.json")
+    with open(json_path, "w") as f:
+        _json.dump(json_out, f, indent=2)
+    print(f"Saved JSON to {json_path}")
+
 
 if __name__ == "__main__":
-    if len(sys.argv) != 2:
-        print("Usage: python eval_results.py <unit_test_pkl_path>")
-        sys.exit(1)
-    compute_metrics(sys.argv[1])
-    
+    parser = argparse.ArgumentParser(description="Evaluate CodeRL unit-test pkl outputs.")
+    parser.add_argument("results_dir", help="Directory containing .pkl unit test result files")
+    parser.add_argument("codes_dir", nargs="?", default=None,
+                        help="Optional directory of generated code JSON files (adds length/uniqueness metrics)")
+    parser.add_argument("--k", nargs="+", type=int, default=None,
+                        help="k values for pass@k (default: auto-detect from {1,5,10,n})")
+    args = parser.parse_args()
+    compute_metrics(args.results_dir, args.codes_dir, args.k)

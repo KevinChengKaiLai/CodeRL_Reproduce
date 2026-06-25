@@ -2,6 +2,8 @@
   <img src="images/logo.jpg" width="50%">
 </p>
 
+> **Reproduction note:** This is the original Salesforce CodeRL README. For this reproduction project's setup, models, data layout, and training pipelines, see **[CLAUDE.md](CLAUDE.md)**.
+
 ## CodeRL: Mastering Code Generation through Pretrained Models and Deep Reinforcement Learning <a name="corl"></a>
 
 

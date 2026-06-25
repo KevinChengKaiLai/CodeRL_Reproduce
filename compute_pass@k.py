@@ -52,8 +52,8 @@ def compute_metrics(results_dir, label):
     print(f"  pass@5             : {pass5:.2f}%")
     return pass1, pass5
 
-sft_p1, sft_p5 = compute_metrics("outputs/results_sft", "SFT")
-rl_p1,  rl_p5  = compute_metrics("outputs/results_rl",  "RL")
+sft_p1, sft_p5 = compute_metrics("outputs/unit_test_score/results_sft", "SFT")
+rl_p1,  rl_p5  = compute_metrics("outputs/unit_test_score/results_rl",  "RL")
 
 output = f"""
 === CodeRL Reproduction Results (Introductory, 500 problems, n=10) ===

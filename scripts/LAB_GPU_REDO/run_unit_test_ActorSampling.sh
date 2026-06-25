@@ -5,9 +5,9 @@
 ## SPDX-License-Identifier: BSD-3-Clause
 ## For full license text, see the LICENSE file in the repo root or https://opensource.org/licenses/BSD-3-Clause
 ## '''##
-code_path=outputs/codes/
+code_path=outputs/sampled_code/codes/
 # save the unit test result for actor sampling
-output_path=outputs/test_results_SFT_actor_sampling/
+output_path=outputs/unit_test_score/test_results_SFT_actor_sampling/
 test_path=data/APPS/train/ 
 
 example_tests=0 # 0: run hidden unit tests; 1: run example unit tests 
@@ -27,7 +27,7 @@ for (( i=$start;i<$end;i++ )) ; do
     ((index++))   
     (
     ulimit -v 16000000
-    python test_one_solution.py \
+    timeout 300 python test_one_solution.py \
         --code_path ${code_path} \
         --output_path ${output_path} \
         --test_path $test_path \

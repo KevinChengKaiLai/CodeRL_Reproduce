@@ -1,14 +1,15 @@
-
-CUDA_VISIBLE_DEVICES=0 python train.py \
+PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True CUDA_VISIBLE_DEVICES=0 python train.py \
+    --model codet5-large \
     --model_path models/sft_actor/ \
-    --save_dir exps/codet5-large_rl_bs4x16_lr2e-05_newcritic \
+    --save_dir codet5-large_rl_bs4x16_lr2e-05_newcritic_relreturns \
     --train-path data/APPS/train/ \
     --tuning_mode rl \
+    --relative_returns \
     --epochs 10 \
     --lr 2e-5 \
-    --batch_size_per_replica 4 \
-    --grad_acc_steps 16 \
-    --save_freq 1000 \
-    --log_freq 10 \
+    --batch-size-per-replica 2 \
+    --grad-acc-steps 32 \
+    --save-freq 1000 \
+    --log-freq 10 \
     --save_total_limit 10 \
     --fp16

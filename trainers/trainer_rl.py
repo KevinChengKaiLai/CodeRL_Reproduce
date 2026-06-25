@@ -383,6 +383,9 @@ class Trainer_RL:
         self.model_wrapped = model
         self.model = model
 
+        if tuning_mode == 'critic' and compute_metrics is None:
+            import numpy as np
+            compute_metrics = lambda ep: {"eval_acc": float((ep.predictions == ep.label_ids).mean())}
         self.compute_metrics = compute_metrics
         self.optimizer, self.lr_scheduler = optimizers
         if model_init is not None and (self.optimizer is not None or self.lr_scheduler is not None):
@@ -2559,6 +2562,17 @@ class Trainer_RL:
             Tuple[Optional[torch.Tensor], Optional[torch.Tensor], Optional[torch.Tensor]]: A tuple with the loss,
             logits and labels (each being optional).
         """
+        if self.tuning_mode in ['critic']:
+            inputs = self._prepare_inputs(inputs)
+            with torch.no_grad():
+                with self.autocast_smart_context_manager():
+                    loss, error_preds = model(input_ids=inputs['input_ids'],
+                                    error_types=inputs['error_types'],
+                                    labels=inputs['labels'])
+            if prediction_loss_only:
+                return (loss.mean().detach(), None, None)
+            return (loss.mean().detach(), error_preds.detach(), inputs['error_types'].squeeze(1).detach())
+
         has_labels = all(inputs.get(k) is not None for k in self.label_names)
         inputs = self._prepare_inputs(inputs)
         if ignore_keys is None:

@@ -93,9 +93,10 @@ def main(args):
     original_problems = glob.glob(args.test_path + '/*')
     problems = sorted(original_problems) 
 
-    if not os.path.exists(args.output_path):
-        os.makedirs(args.output_path, exist_ok=True)
-    print("Saving results to {}".format(args.output_path))
+    if not args.critic_scores:
+        if not os.path.exists(args.output_path):
+            os.makedirs(args.output_path, exist_ok=True)
+        print("Saving results to {}".format(args.output_path))
 
     if args.start > len(problems) or args.start < 0:
         print(f"start index {args.start} > number of problems {len(problems)}")
@@ -196,13 +197,20 @@ def main(args):
                 num_loops = int(args.num_seqs / args.num_seqs_per_iter)
                 output_programs = [] 
                 for i in tqdm(range(num_loops), ncols=0, total=num_loops, leave=False):
-                    output_ids = model.generate(
-                        input_ids, 
-                        do_sample=True, 
-                        temperature=args.temperature, 
-                        max_length=args.max_len, 
-                        num_return_sequences=args.num_seqs_per_iter,
-                        top_p=0.95)                    
+                    if args.temperature == 0:
+                        output_ids = model.generate(
+                            input_ids,
+                            do_sample=False,
+                            max_length=args.max_len,
+                            num_return_sequences=1)
+                    else:
+                        output_ids = model.generate(
+                            input_ids,
+                            do_sample=True,
+                            temperature=args.temperature,
+                            max_length=args.max_len,
+                            num_return_sequences=args.num_seqs_per_iter,
+                            top_p=0.95)
 
                     for output_id in output_ids: 
                         output_programs.append(tokenizer.decode(output_id, skip_special_tokens=True))

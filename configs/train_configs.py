@@ -3,6 +3,7 @@
 # All rights reserved.
 # SPDX-License-Identifier: BSD-3-Clause
 # For full license text, see the LICENSE file in the repo root or https://opensource.org/licenses/BSD-3-Clause
+import os
 #
 
 
@@ -20,7 +21,11 @@ parser.add_argument('--sample-mode', default='uniform_sol', help='sampling outpu
 # Model
 parser.add_argument('--tuning_mode', default='critic', type=str, help='tuning mode for training LMs')
 parser.add_argument('--relative_returns', default=False, action='store_true', help='use relative returns against a baseline during RL')
+parser.add_argument('--positive_only', default=False, action='store_true', help='mask rl_rewards to 0 for samples with relative_return <= 0 (train on positive signal only)')
+parser.add_argument('--negative_only', default=False, action='store_true', help='mask rl_rewards to 0 for samples with relative_return >= 0 (train on negative signal only)')
 parser.add_argument('--clone_rl_head', default=False, action='store_true', help='Optional: clone a seperate linear layer for RL samples and initialize it from finetuned LM head')
+parser.add_argument('--data-suffix', default='', type=str, help='suffix for RL data files, e.g. _round1 loads gen_solutions_critic_scores_round1.pkl and baseline_solutions_round1.json')
+parser.add_argument('--baseline-suffix', default=None, type=str, help='suffix for baseline_solutions.json only; overrides --data-suffix for the baseline. Use to mix rollouts and baselines from different rounds.')
 
 
 # Training
@@ -30,8 +35,10 @@ parser.add_argument('--batch-size-per-replica', default=4, type=int, help='batch
 parser.add_argument('--grad-acc-steps', default=8, type=int, help='number of training steps before each gradient update')
 parser.add_argument('--deepspeed', default = None, type=str, help='path to deepspeed configuration file; set None if not using deepspeed')
 parser.add_argument('--fp16', default=True, action='store_true', help='set 16-bit training to reduce memory usage')
-parser.add_argument('--local_rank', default=-1, type=int)
+parser.add_argument('--max_grad_norm', default=1.0, type=float, help='max gradient norm for clipping; default 1.0 (HF default)')
+parser.add_argument('--local_rank', default=int(os.environ.get('LOCAL_RANK', -1)), type=int)
 parser.add_argument('--db', default=False, action='store_true', help='set to turn on debug mode i.e. using dummy small data split and only 1 data worker')
+parser.add_argument('--val-split', default=0, type=int, help='hold out last N (sorted) problem dirs as validation set; 0 disables validation')
 
 # Logging
 parser.add_argument('--log-freq', default=1, type=int, help='save training log after this number of training steps')

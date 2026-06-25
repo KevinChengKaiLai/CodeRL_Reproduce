@@ -1,12 +1,19 @@
+import argparse
 import json
 import os
 import glob
 import pickle as pkl
 from tqdm import tqdm
 
-codes_dir = "outputs/codes/"
-results_dir = "outputs/test_results_SFT_actor_sampling/"
-train_dir = "data/APPS/train/"
+parser = argparse.ArgumentParser()
+parser.add_argument("--codes_dir", default="outputs/sampled_code/codes/")
+parser.add_argument("--results_dir", default="outputs/unit_test_score/test_results_SFT_actor_sampling/")
+parser.add_argument("--train_dir", default="data/APPS/train/")
+args = parser.parse_args()
+
+codes_dir = args.codes_dir
+results_dir = args.results_dir
+train_dir = args.train_dir
 
 code_files = sorted(glob.glob(codes_dir + "*.json"))
 print(f"Found {len(code_files)} code files")
